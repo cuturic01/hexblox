@@ -3,14 +3,17 @@ package main
 import (
 	"fmt"
 	"hexblox/internal/blockchain"
-	"time"
 )
 
 func main() {
-	genesis := blockchain.Genesis()
-	block := blockchain.New(time.Now().UnixMilli(), "ax001pdsa210000", "ax012234500000", []string{"Data"})
-	fmt.Println(genesis)
-	fmt.Println(block)
-	newBlock := blockchain.MineBlock(block, []string{"New block"})
-	fmt.Println(newBlock)
+	bchain := blockchain.NewBlockchain[string]()
+	fmt.Println(bchain)
+	a := "New block"
+	bchain.AddBlock([]*string{&a})
+	fmt.Println("-----------------")
+	fmt.Println(bchain)
+	fmt.Println(blockchain.IsValidChain(bchain.Chain()))
+	block := blockchain.MineBlock(bchain.Chain()[1], []*string{&a})
+	bchain.Chain()[1] = block
+	fmt.Println(blockchain.IsValidChain(bchain.Chain()))
 }

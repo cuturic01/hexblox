@@ -16,9 +16,10 @@ func (blockchain *Blockchain[T]) Chain() []*Block[T] {
 	return blockchain.chain
 }
 
-func (blockchain *Blockchain[T]) AddBlock(data []*T) {
+func (blockchain *Blockchain[T]) AddBlock(data []*T) *Block[T] {
 	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data)
 	blockchain.chain = append(blockchain.chain, block)
+	return block
 }
 
 func (blockchain *Blockchain[T]) String() string {
@@ -38,10 +39,10 @@ func IsValidChain[T any](chain []*Block[T]) bool {
 		block := chain[i]
 		lastBlock := chain[i-1]
 
-		if block.lastHash != lastBlock.hash {
+		if block.LastHash != lastBlock.Hash {
 			return false
 		}
-		if block.hash != BlockHash(block) {
+		if block.Hash != BlockHash(block) {
 			return false
 		}
 	}

@@ -1,25 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"hexblox/internal/api/routes"
-	"hexblox/internal/blockchain"
+	"flag"
+	"hexblox/internal/p2p"
 )
 
 func main() {
-	bc := blockchain.NewBlockchain[string]()
-	fmt.Println(bc)
-	a := "New block"
-	bc.AddBlock([]*string{&a})
-	fmt.Println("-----------------")
-	fmt.Println(bc)
-	fmt.Println(blockchain.IsValidChain(bc.Chain()))
+	httpPort := flag.String("http", "", "HTTP server port")
+	hostPort := flag.String("host", "", "WebSocket server port")
+	flag.Parse()
 
-	r := gin.Default()
-	routes.SetBlockchainRoutes(r, bc)
-	err := r.Run(":8080")
-	if err != nil {
-		return
-	}
+	p2p.Run(*httpPort, *hostPort)
+
+	select {}
 }

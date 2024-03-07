@@ -2,26 +2,27 @@ package blockchain
 
 import "fmt"
 
-type Blockchain[T any] struct {
-	chain []*Block[T]
+type Blockchain struct {
+	chain []*Block
 }
 
-func NewBlockchain[T any]() *Blockchain[T] {
-	return &Blockchain[T]{
-		chain: []*Block[T]{Genesis[T]()},
+func NewBlockchain() *Blockchain {
+	return &Blockchain{
+		chain: []*Block{Genesis()},
 	}
 }
 
-func (blockchain *Blockchain[T]) Chain() []*Block[T] {
+func (blockchain *Blockchain) Chain() []*Block {
 	return blockchain.chain
 }
 
-func (blockchain *Blockchain[T]) AddBlock(data []*T) {
+func (blockchain *Blockchain) AddBlock(data []*string) *Block {
 	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data)
 	blockchain.chain = append(blockchain.chain, block)
+	return block
 }
 
-func (blockchain *Blockchain[T]) String() string {
+func (blockchain *Blockchain) String() string {
 	chainString := "---Chain \n"
 	for _, block := range blockchain.chain {
 		chainString = fmt.Sprint(chainString, "   ", block)
@@ -29,8 +30,8 @@ func (blockchain *Blockchain[T]) String() string {
 	return chainString
 }
 
-func IsValidChain[T any](chain []*Block[T]) bool {
-	if chain[0].String() != Genesis[T]().String() {
+func IsValidChain(chain []*Block) bool {
+	if chain[0].String() != Genesis().String() {
 		return false
 	}
 
@@ -38,10 +39,10 @@ func IsValidChain[T any](chain []*Block[T]) bool {
 		block := chain[i]
 		lastBlock := chain[i-1]
 
-		if block.lastHash != lastBlock.hash {
+		if block.LastHash != lastBlock.Hash {
 			return false
 		}
-		if block.hash != BlockHash(block) {
+		if block.Hash != HashBlock(block) {
 			return false
 		}
 	}
@@ -49,7 +50,7 @@ func IsValidChain[T any](chain []*Block[T]) bool {
 	return true
 }
 
-func (blockchain *Blockchain[T]) ReplaceChain(newChain []*Block[T]) {
+func (blockchain *Blockchain) ReplaceChain(newChain []*Block) {
 	if len(blockchain.chain) >= len(newChain) {
 		fmt.Println("Received chain is not longer then the current.")
 		return

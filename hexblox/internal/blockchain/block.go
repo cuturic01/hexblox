@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-type Block[T any] struct {
+type Block struct {
 	Timestamp int64
 	LastHash  string
 	Hash      string
-	Data      []*T
+	Data      []*string
 }
 
-func Genesis[T any]() *Block[T] {
-	return &Block[T]{
+func Genesis() *Block {
+	return &Block{
 		Timestamp: 0,
 		LastHash:  "----------------",
 		Hash:      "f1r57-h45h",
-		Data:      []*T{},
+		Data:      []*string{},
 	}
 }
 
-func (block *Block[T]) String() string {
+func (block *Block) String() string {
 	return fmt.Sprint(
 		"-Block \n",
 		"      Timestamp: ", block.Timestamp, "\n",
@@ -33,12 +33,12 @@ func (block *Block[T]) String() string {
 	)
 }
 
-func MineBlock[T any](lastBlock *Block[T], data []*T) *Block[T] {
+func MineBlock(lastBlock *Block, data []*string) *Block {
 	timestamp := time.Now().UnixMilli()
 	lastHash := lastBlock.Hash
 	hash := GenerateHash(timestamp, lastHash, data)
 
-	return &Block[T]{
+	return &Block{
 		Timestamp: timestamp,
 		LastHash:  lastHash,
 		Hash:      hash,
@@ -46,13 +46,19 @@ func MineBlock[T any](lastBlock *Block[T], data []*T) *Block[T] {
 	}
 }
 
-func GenerateHash[T any](timestamp int64, lastHash string, data []T) string {
-	s := fmt.Sprint(timestamp, lastHash, data)
+func GenerateHash(timestamp int64, lastHash string, data []*string) string {
+	var stringData string
+
+	for _, strPtr := range data {
+		stringData += *strPtr
+	}
+
+	s := fmt.Sprint(timestamp, lastHash, stringData)
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func BlockHash[T any](block *Block[T]) string {
+func HashBlock(block *Block) string {
 	return GenerateHash(block.Timestamp, block.LastHash, block.Data)
 }

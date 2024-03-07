@@ -9,16 +9,15 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"hexblox/internal/api/routes"
 	"hexblox/internal/blockchain"
 	"net/http"
 	"time"
 )
 
 type Node struct {
-	blockchain *blockchain.Blockchain[string]
+	Blockchain *blockchain.Blockchain
 
-	httpServer *gin.Engine
+	HttpServer *gin.Engine
 
 	ctx     context.Context
 	host    host.Host
@@ -31,22 +30,23 @@ type Node struct {
 
 func Run(httpPort string, hostPort string) *Node {
 	node := &Node{
-		blockchain:    blockchain.NewBlockchain[string](),
+		Blockchain:    blockchain.NewBlockchain(),
 		ctx:           context.Background(),
 		topics:        make(map[string]*pubsub.Topic),
 		subscriptions: make(map[string]*pubsub.Subscription),
 	}
-	node.initHttpServer(httpPort)
 	node.initHost(hostPort)
 	node.initSub()
-	node.propagateChain()
+	node.PropagateChain()
+	node.initHttpServer(httpPort)
 
 	return node
 }
 
 func (node *Node) initHttpServer(httpPort string) {
 	httpServer := gin.Default()
-	routes.SetBlockchainRoutes(httpServer, node.blockchain)
+	node.HttpServer = httpServer
+	SetBlockchainRoutes(node)
 	httpServer.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello from HTTP server")
 	})
@@ -56,8 +56,6 @@ func (node *Node) initHttpServer(httpPort string) {
 			panic(err)
 		}
 	}()
-
-	node.httpServer = httpServer
 }
 
 func (node *Node) initHost(hostPort string) {
@@ -68,7 +66,7 @@ func (node *Node) initHost(hostPort string) {
 		fmt.Println("Failed to create host:", err)
 		panic(err)
 	}
-	fmt.Println(fmt.Sprintf("Host %s initialized on port: %s", nodeHost.ID(), hostPort))
+	fmt.Printf("Host %s initialized on port: %s\n", nodeHost.ID(), hostPort)
 
 	node.host = nodeHost
 	node.notifee = &Notifee{h: nodeHost}
@@ -118,7 +116,11 @@ func (node *Node) subscribe(topic string) {
 			continue
 		}
 
-		fmt.Printf("got message: %s, from: %s\n", string(msg.Data), msg.ReceivedFrom.String())
+		fmt.Printf("Message reviced from: %s\n", msg.ReceivedFrom.String())
+		switch topic {
+		case "hexblox":
+			node.syncChain(msg)
+		}
 	}
 }
 
@@ -138,8 +140,8 @@ func (node *Node) sendMessage(topic string, message string) error {
 	return nil
 }
 
-func (node *Node) propagateChain() {
-	jsonBlockchain, err := json.Marshal(node.blockchain.Chain())
+func (node *Node) PropagateChain() {
+	jsonBlockchain, err := json.Marshal(node.Blockchain.Chain())
 	if err != nil {
 		panic(err)
 	}
@@ -148,4 +150,15 @@ func (node *Node) propagateChain() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (node *Node) syncChain(message *pubsub.Message) {
+	messageData := string(message.Data)
+	var newChain []*blockchain.Block
+
+	if err := json.Unmarshal([]byte(messageData), &newChain); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	node.Blockchain.ReplaceChain(newChain)
 }

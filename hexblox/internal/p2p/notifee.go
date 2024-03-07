@@ -20,5 +20,4 @@ func (n *Notifee) HandlePeerFound(pi peer.AddrInfo) {
 	if err != nil {
 		fmt.Printf("error connecting to peer %s: %s\n", pi.ID.String(), err)
 	}
-	fmt.Printf("connected to peer %s\n", pi.ID.String())
 }

@@ -1,15 +1,13 @@
 package p2p
 
 import (
-	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"hexblox/internal/api/routes"
 	"hexblox/internal/blockchain"
@@ -19,27 +17,36 @@ import (
 
 type Node struct {
 	blockchain *blockchain.Blockchain[string]
-	host       host.Host
-	gossipPub  *pubsub.PubSub
+
 	httpServer *gin.Engine
+
+	ctx     context.Context
+	host    host.Host
+	notifee *Notifee
+
+	gossipPubSub  *pubsub.PubSub
+	topics        map[string]*pubsub.Topic
+	subscriptions map[string]*pubsub.Subscription
 }
 
 func Run(httpPort string, hostPort string) *Node {
-	bc := blockchain.NewBlockchain[string]()
-	httpServer := createHttpServer(httpPort, bc)
-	nodeHost, gossipSub, _ := createHost(hostPort)
-
-	return &Node{
-		blockchain: bc,
-		host:       nodeHost,
-		gossipPub:  gossipSub,
-		httpServer: httpServer,
+	node := &Node{
+		blockchain:    blockchain.NewBlockchain[string](),
+		ctx:           context.Background(),
+		topics:        make(map[string]*pubsub.Topic),
+		subscriptions: make(map[string]*pubsub.Subscription),
 	}
+	node.initHttpServer(httpPort)
+	node.initHost(hostPort)
+	node.initSub()
+	node.propagateChain()
+
+	return node
 }
 
-func createHttpServer(httpPort string, bc *blockchain.Blockchain[string]) *gin.Engine {
+func (node *Node) initHttpServer(httpPort string) {
 	httpServer := gin.Default()
-	routes.SetBlockchainRoutes(httpServer, bc)
+	routes.SetBlockchainRoutes(httpServer, node.blockchain)
 	httpServer.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello from HTTP server")
 	})
@@ -50,11 +57,10 @@ func createHttpServer(httpPort string, bc *blockchain.Blockchain[string]) *gin.E
 		}
 	}()
 
-	return httpServer
+	node.httpServer = httpServer
 }
 
-func createHost(hostPort string) (host.Host, *pubsub.PubSub, *pubsub.Subscription) {
-	ctx := context.Background()
+func (node *Node) initHost(hostPort string) {
 	nodeHost, err := libp2p.New(
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", hostPort)),
 	)
@@ -62,83 +68,53 @@ func createHost(hostPort string) (host.Host, *pubsub.PubSub, *pubsub.Subscriptio
 		fmt.Println("Failed to create host:", err)
 		panic(err)
 	}
+	fmt.Println(fmt.Sprintf("Host %s initialized on port: %s", nodeHost.ID(), hostPort))
 
-	gossipSub, subscription := createSub(ctx, nodeHost)
-
-	nodeHost.SetStreamHandler("/test", handleStream)
-
-	return nodeHost, gossipSub, subscription
+	node.host = nodeHost
+	node.notifee = &Notifee{h: nodeHost}
 }
 
-func handleStream(stream network.Stream) {
-	fmt.Println("New stream received")
-
-	// Read the incoming message from the stream
-	reader := bufio.NewReader(stream)
-	message, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Failed to read message from stream:", err)
-		return
-	}
-
-	// Process the incoming message
-	fmt.Println("Received message:", message)
-
-	// Optionally, you can send a response back to the peer
-	// response := "Response from host"
-	// _, err = stream.Write([]byte(response))
-	// if err != nil {
-	//     fmt.Println("Failed to send response:", err)
-	//     return
-	// }
-
-	// Close the stream
-	err = stream.Close()
-	if err != nil {
-		fmt.Println("Failed to close stream:", err)
-	}
-}
-
-func createSub(ctx context.Context, host host.Host) (*pubsub.PubSub, *pubsub.Subscription) {
-	gossipSub, err := pubsub.NewGossipSub(ctx, host)
+func (node *Node) initSub() {
+	gossipPubSub, err := pubsub.NewGossipSub(node.ctx, node.host)
 	if err != nil {
 		panic(err)
 	}
-	if err := setupDiscovery(host); err != nil {
+	node.gossipPubSub = gossipPubSub
+
+	if err := node.setupDiscovery(); err != nil {
 		panic(err)
 	}
 
+	// TODO: see if there is a way to implicitly wait for completion of setupDiscovery
 	time.Sleep(5 * time.Second)
 
 	room := "hexblox"
-	topic, err := gossipSub.Join(room)
+	topic, err := gossipPubSub.Join(room)
 	if err != nil {
 		panic(err)
 	}
+	node.topics[room] = topic
+
 	subscriber, err := topic.Subscribe()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Subscribed to topic:", topic.String())
-	go subscribe(subscriber, ctx, host.ID())
+	node.subscriptions[room] = subscriber
 
-	err = topic.Publish(ctx, []byte("Hello, peer!"))
-	if err != nil {
-		panic(err)
-	}
-
-	return gossipSub, subscriber
+	go node.subscribe(room)
 }
 
-func subscribe(subscriber *pubsub.Subscription, ctx context.Context, hostID peer.ID) {
+func (node *Node) subscribe(topic string) {
+	subscription := node.subscriptions[topic]
 	for {
-		msg, err := subscriber.Next(ctx)
+		msg, err := subscription.Next(node.ctx)
 		if err != nil {
 			panic(err)
 		}
 
 		// only consider messages delivered by other peers
-		if msg.ReceivedFrom == hostID {
+		if msg.ReceivedFrom == node.host.ID() {
 			continue
 		}
 
@@ -146,8 +122,30 @@ func subscribe(subscriber *pubsub.Subscription, ctx context.Context, hostID peer
 	}
 }
 
-func setupDiscovery(h host.Host) error {
+func (node *Node) setupDiscovery() error {
 	// setup mDNS discovery to find local peers
-	s := mdns.NewMdnsService(h, "hexblox-pubsub", &Notifee{h: h})
+	s := mdns.NewMdnsService(node.host, "hexblox-pubsub", node.notifee)
 	return s.Start()
+}
+
+func (node *Node) sendMessage(topic string, message string) error {
+	err := node.topics[topic].Publish(node.ctx, []byte(message))
+	if err != nil {
+		fmt.Println("Failed to sent message:", err)
+		return err
+	}
+	fmt.Println("Message sent to topic:", topic)
+	return nil
+}
+
+func (node *Node) propagateChain() {
+	jsonBlockchain, err := json.Marshal(node.blockchain.Chain())
+	if err != nil {
+		panic(err)
+	}
+
+	err = node.sendMessage("hexblox", string(jsonBlockchain))
+	if err != nil {
+		panic(err)
+	}
 }

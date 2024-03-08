@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hexblox/internal/config"
 	"strings"
 	"time"
 )
@@ -23,7 +24,7 @@ func Genesis() *Block {
 		LastHash:   "----------------",
 		Hash:       "f1r57-h45h",
 		Nonce:      0,
-		Difficulty: 3,
+		Difficulty: config.Difficulty,
 		Data:       []*string{},
 	}
 }
@@ -91,7 +92,7 @@ func HashBlock(block *Block) string {
 }
 
 func adjustDifficulty(lastBlock *Block, currentTimestamp int64) int {
-	if lastBlock.Timestamp+3000 > currentTimestamp {
+	if lastBlock.Timestamp+config.MineRate > currentTimestamp {
 		return lastBlock.Difficulty + 1
 	} else {
 		return lastBlock.Difficulty - 1

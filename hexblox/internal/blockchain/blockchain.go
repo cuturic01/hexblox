@@ -3,14 +3,12 @@ package blockchain
 import "fmt"
 
 type Blockchain struct {
-	chain      []*Block
-	difficulty int
+	chain []*Block
 }
 
 func NewBlockchain() *Blockchain {
 	return &Blockchain{
-		chain:      []*Block{Genesis()},
-		difficulty: 3,
+		chain: []*Block{Genesis()},
 	}
 }
 
@@ -19,7 +17,7 @@ func (blockchain *Blockchain) Chain() []*Block {
 }
 
 func (blockchain *Blockchain) AddBlock(data []*string) *Block {
-	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data, blockchain.difficulty)
+	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data)
 	blockchain.chain = append(blockchain.chain, block)
 	return block
 }

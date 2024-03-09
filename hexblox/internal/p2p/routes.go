@@ -7,22 +7,53 @@ import (
 )
 
 func SetBlockchainRoutes(node *Node) {
-	node.HttpServer.GET("/blocks", func(context *gin.Context) {
-		context.JSON(http.StatusOK, node.Blockchain.Chain())
-	})
+	blockchainGroup := node.HttpServer.Group("/hexblox")
+	{
+		blockchainGroup.GET("/blocks", func(context *gin.Context) {
+			context.JSON(http.StatusOK, node.Blockchain.Chain())
+		})
 
-	node.HttpServer.POST("/mine", func(context *gin.Context) {
-		var requestData struct {
-			Data []*string `json:"data"`
-		}
+		blockchainGroup.POST("/mine", func(context *gin.Context) {
+			var requestData struct {
+				Data []*string `json:"data"`
+			}
 
-		if err := context.BindJSON(&requestData); err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+			if err := context.BindJSON(&requestData); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
 
-		block := node.Blockchain.AddBlock(requestData.Data)
-		fmt.Println(block)
-		node.PropagateChain()
-	})
+			block := node.Blockchain.AddBlock(requestData.Data)
+			fmt.Println(block)
+			node.PropagateChain()
+		})
+	}
+
+}
+
+func SetTransactionRoutes(node *Node) {
+	transactionGroup := node.HttpServer.Group("hexblox/transactions")
+	{
+		transactionGroup.GET("", func(context *gin.Context) {
+			context.JSON(http.StatusOK, node.TransactionPool.Transactions)
+		})
+
+		transactionGroup.POST("/transact", func(context *gin.Context) {
+			var requestData struct {
+				Recipient string  `json:"recipient"`
+				Amount    float64 `json:"amount"`
+			}
+			if err := context.BindJSON(&requestData); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			transaction := node.Wallet.CreateTransaction(requestData.Recipient, requestData.Amount, node.TransactionPool)
+			fmt.Println(transaction)
+			fmt.Println(node.TransactionPool)
+		})
+
+		transactionGroup.GET("/public-key", func(context *gin.Context) {
+			context.JSON(http.StatusOK, node.Wallet.PublicKey)
+		})
+	}
 }

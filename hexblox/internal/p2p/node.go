@@ -10,12 +10,15 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"hexblox/internal/blockchain"
+	"hexblox/internal/wallet"
 	"net/http"
 	"time"
 )
 
 type Node struct {
-	Blockchain *blockchain.Blockchain
+	Blockchain      *blockchain.Blockchain
+	Wallet          *wallet.Wallet
+	TransactionPool *wallet.TransactionPool
 
 	HttpServer *gin.Engine
 
@@ -30,10 +33,12 @@ type Node struct {
 
 func Run(httpPort string, hostPort string) *Node {
 	node := &Node{
-		Blockchain:    blockchain.NewBlockchain(),
-		ctx:           context.Background(),
-		topics:        make(map[string]*pubsub.Topic),
-		subscriptions: make(map[string]*pubsub.Subscription),
+		Blockchain:      blockchain.NewBlockchain(),
+		Wallet:          wallet.NewWallet(),
+		TransactionPool: wallet.NewTransactionPool(),
+		ctx:             context.Background(),
+		topics:          make(map[string]*pubsub.Topic),
+		subscriptions:   make(map[string]*pubsub.Subscription),
 	}
 	node.initHost(hostPort)
 	node.initSub()
@@ -47,6 +52,7 @@ func (node *Node) initHttpServer(httpPort string) {
 	httpServer := gin.Default()
 	node.HttpServer = httpServer
 	SetBlockchainRoutes(node)
+	SetTransactionRoutes(node)
 	httpServer.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello from HTTP server")
 	})

@@ -7,10 +7,10 @@ import (
 )
 
 type Transaction struct {
-	id             string
-	Input          *Input
-	senderOutput   *Output
-	receiverOutput *Output
+	id              string
+	Input           *Input
+	senderOutput    *Output
+	receiverOutputs []*Output
 }
 
 func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Transaction {
@@ -29,34 +29,58 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 	}
 
 	transaction := &Transaction{
-		id:             uuid.NewString(),
-		senderOutput:   senderOutput,
-		receiverOutput: receiverOutput,
+		id:              uuid.NewString(),
+		senderOutput:    senderOutput,
+		receiverOutputs: []*Output{receiverOutput},
 	}
 
-	return SignTransaction(transaction, senderWallet)
+	SignTransaction(transaction, senderWallet)
+
+	return transaction
 }
 
 func (transaction *Transaction) String() string {
+	var outputsString string
+	for _, output := range transaction.receiverOutputs {
+		outputsString = fmt.Sprint(
+			outputsString,
+			output.String(),
+			"            -----------------------------------------------------------------------------\n")
+	}
+
 	return fmt.Sprint(
 		"-Transaction \n",
 		"      Id:   ", transaction.id, "\n",
 		"      Input:\n", transaction.Input.String(),
-		"      Sender output:\n", transaction.senderOutput,
-		"      Receiver output:\n", transaction.receiverOutput,
+		"      Sender output:\n", transaction.senderOutput.String(),
+		"      Receiver outputs:\n", outputsString,
 	)
 }
 
-func SignTransaction(transaction *Transaction, senderWallet *Wallet) *Transaction {
+func SignTransaction(transaction *Transaction, senderWallet *Wallet) {
+	var outputsString string
+	for _, output := range transaction.receiverOutputs {
+		outputsString = fmt.Sprint(outputsString, output.String())
+	}
+
 	transaction.Input = &Input{
 		address:   senderWallet.PublicKey,
 		timestamp: time.Now().UnixMilli(),
 		amount:    senderWallet.balance,
-		signature: GenerateHash(
-			transaction.senderOutput.address,
-			transaction.senderOutput.amount,
-			transaction.receiverOutput.address,
-			transaction.receiverOutput.amount),
+		signature: senderWallet.Sign(GenerateHash(outputsString)),
 	}
-	return transaction
+}
+
+func (transaction *Transaction) Update(senderWallet *Wallet, recipient string, amount float64) {
+	if amount > transaction.senderOutput.amount {
+		fmt.Printf("Amount %f exceedes balance", amount)
+	}
+
+	transaction.senderOutput.amount = transaction.senderOutput.amount - amount
+	transaction.receiverOutputs = append(transaction.receiverOutputs, &Output{
+		address: recipient,
+		amount:  amount,
+	})
+
+	SignTransaction(transaction, senderWallet)
 }

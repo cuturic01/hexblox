@@ -10,8 +10,7 @@ import (
 	"hexblox/internal/config"
 )
 
-func GenerateHash(senderAddress string, senderAmount float64, receiverAddress string, receiverAmount float64) string {
-	data := fmt.Sprint(senderAddress, senderAmount, receiverAddress, receiverAmount)
+func GenerateHash(data string) string {
 	hash := sha256.New()
 	hash.Write([]byte(data))
 	return hex.EncodeToString(hash.Sum(nil))

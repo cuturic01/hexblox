@@ -1,0 +1,50 @@
+package wallet
+
+import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"hexblox/internal/config"
+)
+
+func GenerateHash(senderAddress string, senderAmount float64, receiverAddress string, receiverAmount float64) string {
+	data := fmt.Sprint(senderAddress, senderAmount, receiverAddress, receiverAmount)
+	hash := sha256.New()
+	hash.Write([]byte(data))
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func GenerateKeyPair() *ecdsa.PrivateKey {
+	key, err := ecdsa.GenerateKey(config.Curve, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+func EncodeKey(key *ecdsa.PublicKey) string {
+	uncompressedBytes := elliptic.MarshalCompressed(key.Curve, key.X, key.Y)
+	return hex.EncodeToString(uncompressedBytes)
+}
+
+func DecodeKey(hexEncoded string) (*ecdsa.PublicKey, error) {
+	uncompressedBytes, err := hex.DecodeString(hexEncoded)
+	if err != nil {
+		return nil, err
+	}
+
+	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), uncompressedBytes)
+	if x == nil || y == nil {
+		return nil, fmt.Errorf("invalid uncompressed public key")
+	}
+
+	publicKey := &ecdsa.PublicKey{
+		Curve: config.Curve,
+		X:     x,
+		Y:     y,
+	}
+	return publicKey, nil
+}

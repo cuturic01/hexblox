@@ -33,8 +33,8 @@ func (block *Block) String() string {
 	return fmt.Sprint(
 		"-Block \n",
 		"      Timestamp:  ", block.Timestamp, "\n",
-		"      LastHash:   ", block.LastHash[0:10], "...\n",
-		"      Hash:       ", block.Hash[0:10], "...\n",
+		"      LastHash:   ", block.LastHash, "\n",
+		"      Hash:       ", block.Hash, "\n",
 		"      Nonce:      ", block.Nonce, "\n",
 		"      Difficulty: ", block.Difficulty, "\n",
 		"      Data:       ", block.Data, "\n",

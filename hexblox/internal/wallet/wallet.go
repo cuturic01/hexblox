@@ -1,35 +1,23 @@
 package wallet
 
 import (
-	"bytes"
-	"crypto/rsa"
-	"encoding/gob"
+	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"hexblox/internal/config"
-	"hexblox/internal/util"
 )
 
 type Wallet struct {
 	PublicKey string
 	balance   float64
-	keyPair   *rsa.PrivateKey
+	keyPair   *ecdsa.PrivateKey
 }
 
 func NewWallet() *Wallet {
-	keyPair := util.GenerateKeyPair()
-	publicKey := keyPair.PublicKey
-
-	buf := new(bytes.Buffer)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(publicKey.E); err != nil {
-		fmt.Println(err)
-	}
-	// TODO: see if this is acceptable
-	publicKeyHex := hex.EncodeToString(append(publicKey.N.Bytes(), buf.Bytes()...))
-
+	keyPair := GenerateKeyPair()
 	return &Wallet{
-		PublicKey: publicKeyHex,
+		PublicKey: EncodeKey(&keyPair.PublicKey),
 		balance:   config.InitialBalance,
 		keyPair:   keyPair,
 	}
@@ -38,7 +26,15 @@ func NewWallet() *Wallet {
 func (wallet *Wallet) String() string {
 	return fmt.Sprint(
 		"-Wallet \n",
-		"      Public key: ", wallet.PublicKey[:10], "...\n",
+		"      Public key: ", wallet.PublicKey, "\n",
 		"      Balance:    ", wallet.balance, "\n",
 	)
+}
+
+func (wallet *Wallet) Sign(hash string) string {
+	signature, err := wallet.keyPair.Sign(rand.Reader, []byte(hash), nil)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(signature)
 }

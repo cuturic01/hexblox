@@ -48,8 +48,7 @@ func SetTransactionRoutes(node *Node) {
 				return
 			}
 			transaction := node.Wallet.CreateTransaction(requestData.Recipient, requestData.Amount, node.TransactionPool)
-			fmt.Println(transaction)
-			fmt.Println(node.TransactionPool)
+			node.PropagateTransaction(transaction)
 		})
 
 		transactionGroup.GET("/public-key", func(context *gin.Context) {

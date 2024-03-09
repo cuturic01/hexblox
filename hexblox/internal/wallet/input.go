@@ -4,16 +4,16 @@ import "fmt"
 
 type Input struct {
 	Address   string
-	timestamp int64
-	amount    float64
-	signature string
+	Timestamp int64
+	Amount    float64
+	Signature string
 }
 
 func (input *Input) String() string {
 	return fmt.Sprint(
 		"      Address:   ", input.Address, "\n",
-		"      Timestamp: ", input.timestamp, "\n",
-		"      Amount:    ", input.amount, "\n",
-		"      Signature: ", input.signature, "\n",
+		"      Timestamp: ", input.Timestamp, "\n",
+		"      Amount:    ", input.Amount, "\n",
+		"      Signature: ", input.Signature, "\n",
 	)
 }

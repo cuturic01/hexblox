@@ -92,8 +92,16 @@ func (node *Node) initSub() {
 	// TODO: see if there is a way to implicitly wait for completion of setupDiscovery
 	time.Sleep(5 * time.Second)
 
-	room := "hexblox"
-	topic, err := gossipPubSub.Join(room)
+	node.joinRooms()
+}
+
+func (node *Node) joinRooms() {
+	node.joinRoom("hexblox")
+	node.joinRoom("hexblox-transaction-pool")
+}
+
+func (node *Node) joinRoom(room string) {
+	topic, err := node.gossipPubSub.Join(room)
 	if err != nil {
 		panic(err)
 	}
@@ -126,6 +134,8 @@ func (node *Node) subscribe(topic string) {
 		switch topic {
 		case "hexblox":
 			node.syncChain(msg)
+		case "hexblox-transaction-pool":
+			node.syncTransactionPool(msg)
 		}
 	}
 }
@@ -167,4 +177,26 @@ func (node *Node) syncChain(message *pubsub.Message) {
 		return
 	}
 	node.Blockchain.ReplaceChain(newChain)
+}
+
+func (node *Node) PropagateTransaction(transaction *wallet.Transaction) {
+	jsonTransaction, err := json.Marshal(transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = node.sendMessage("hexblox-transaction-pool", string(jsonTransaction))
+}
+
+func (node *Node) syncTransactionPool(message *pubsub.Message) {
+	messageData := string(message.Data)
+	var newTransaction *wallet.Transaction
+
+	if err := json.Unmarshal([]byte(messageData), &newTransaction); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	node.TransactionPool.Transactions = append(node.TransactionPool.Transactions, newTransaction)
+	fmt.Println("Transaction pool successfully updated.")
 }

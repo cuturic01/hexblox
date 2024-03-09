@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hexblox/internal/config"
+	"strings"
 )
 
 func GenerateHash(data string) string {
@@ -46,4 +47,12 @@ func DecodeKey(hexEncoded string) (*ecdsa.PublicKey, error) {
 		Y:     y,
 	}
 	return publicKey, nil
+}
+
+func IndentString(input string, indent string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = indent + line
+	}
+	return strings.ReplaceAll(strings.Join(lines, "\n")+string(input[len(input)-1]), "\n\n", "\n")
 }

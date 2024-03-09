@@ -11,9 +11,9 @@ type Input struct {
 
 func (input *Input) String() string {
 	return fmt.Sprint(
-		"            Address:   ", input.address, "\n",
-		"            Timestamp: ", input.timestamp, "\n",
-		"            Amount:    ", input.amount, "\n",
-		"            Signature: ", input.signature, "\n",
+		"      Address:   ", input.address, "\n",
+		"      Timestamp: ", input.timestamp, "\n",
+		"      Amount:    ", input.amount, "\n",
+		"      Signature: ", input.signature, "\n",
 	)
 }

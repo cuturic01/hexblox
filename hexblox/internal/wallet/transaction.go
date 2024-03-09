@@ -7,7 +7,7 @@ import (
 )
 
 type Transaction struct {
-	id              string
+	Id              string
 	Input           *Input
 	senderOutput    *Output
 	receiverOutputs []*Output
@@ -29,7 +29,7 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 	}
 
 	transaction := &Transaction{
-		id:              uuid.NewString(),
+		Id:              uuid.NewString(),
 		senderOutput:    senderOutput,
 		receiverOutputs: []*Output{receiverOutput},
 	}
@@ -42,18 +42,17 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 func (transaction *Transaction) String() string {
 	var outputsString string
 	for _, output := range transaction.receiverOutputs {
-		outputsString = fmt.Sprint(
-			outputsString,
-			output.String(),
-			"            -----------------------------------------------------------------------------\n")
+		outputsString +=
+			output.String() +
+				"-----------------------------------------------------------------------------\n"
 	}
 
 	return fmt.Sprint(
 		"-Transaction \n",
-		"      Id:   ", transaction.id, "\n",
-		"      Input:\n", transaction.Input.String(),
-		"      Sender output:\n", transaction.senderOutput.String(),
-		"      Receiver outputs:\n", outputsString,
+		"      Id:   ", transaction.Id, "\n",
+		"      Input:\n", IndentString(transaction.Input.String(), "      "),
+		"      Sender output:\n", IndentString(transaction.senderOutput.String(), "      "),
+		"      Receiver outputs:\n", IndentString(outputsString, "      "),
 	)
 }
 

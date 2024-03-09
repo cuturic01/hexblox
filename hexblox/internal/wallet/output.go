@@ -9,7 +9,7 @@ type Output struct {
 
 func (output *Output) String() string {
 	return fmt.Sprint(
-		"            Address:   ", output.address, "\n",
-		"            Amount:    ", output.amount, "\n",
+		"      Address:   ", output.address, "\n",
+		"      Amount:    ", output.amount, "\n",
 	)
 }

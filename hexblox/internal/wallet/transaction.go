@@ -7,10 +7,10 @@ import (
 )
 
 type Transaction struct {
-	id              string
+	Id              string
 	Input           *Input
-	senderOutput    *Output
-	receiverOutputs []*Output
+	SenderOutput    *Output
+	ReceiverOutputs []*Output
 }
 
 func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Transaction {
@@ -20,18 +20,18 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 	}
 
 	senderOutput := &Output{
-		address: senderWallet.PublicKey,
-		amount:  senderWallet.balance - amount,
+		Address: senderWallet.PublicKey,
+		Amount:  senderWallet.balance - amount,
 	}
 	receiverOutput := &Output{
-		address: recipient,
-		amount:  amount,
+		Address: recipient,
+		Amount:  amount,
 	}
 
 	transaction := &Transaction{
-		id:              uuid.NewString(),
-		senderOutput:    senderOutput,
-		receiverOutputs: []*Output{receiverOutput},
+		Id:              uuid.NewString(),
+		SenderOutput:    senderOutput,
+		ReceiverOutputs: []*Output{receiverOutput},
 	}
 
 	SignTransaction(transaction, senderWallet)
@@ -41,45 +41,44 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 
 func (transaction *Transaction) String() string {
 	var outputsString string
-	for _, output := range transaction.receiverOutputs {
-		outputsString = fmt.Sprint(
-			outputsString,
-			output.String(),
-			"            -----------------------------------------------------------------------------\n")
+	for _, output := range transaction.ReceiverOutputs {
+		outputsString +=
+			output.String() +
+				"-----------------------------------------------------------------------------\n"
 	}
 
 	return fmt.Sprint(
 		"-Transaction \n",
-		"      Id:   ", transaction.id, "\n",
-		"      Input:\n", transaction.Input.String(),
-		"      Sender output:\n", transaction.senderOutput.String(),
-		"      Receiver outputs:\n", outputsString,
+		"      Id:   ", transaction.Id, "\n",
+		"      Input:\n", IndentString(transaction.Input.String(), "      "),
+		"      Sender output:\n", IndentString(transaction.SenderOutput.String(), "      "),
+		"      Receiver outputs:\n", IndentString(outputsString, "      "),
 	)
 }
 
 func SignTransaction(transaction *Transaction, senderWallet *Wallet) {
 	var outputsString string
-	for _, output := range transaction.receiverOutputs {
+	for _, output := range transaction.ReceiverOutputs {
 		outputsString = fmt.Sprint(outputsString, output.String())
 	}
 
 	transaction.Input = &Input{
-		address:   senderWallet.PublicKey,
-		timestamp: time.Now().UnixMilli(),
-		amount:    senderWallet.balance,
-		signature: senderWallet.Sign(GenerateHash(outputsString)),
+		Address:   senderWallet.PublicKey,
+		Timestamp: time.Now().UnixMilli(),
+		Amount:    senderWallet.balance,
+		Signature: senderWallet.Sign(GenerateHash(outputsString)),
 	}
 }
 
 func (transaction *Transaction) Update(senderWallet *Wallet, recipient string, amount float64) {
-	if amount > transaction.senderOutput.amount {
+	if amount > transaction.SenderOutput.Amount {
 		fmt.Printf("Amount %f exceedes balance", amount)
 	}
 
-	transaction.senderOutput.amount = transaction.senderOutput.amount - amount
-	transaction.receiverOutputs = append(transaction.receiverOutputs, &Output{
-		address: recipient,
-		amount:  amount,
+	transaction.SenderOutput.Amount = transaction.SenderOutput.Amount - amount
+	transaction.ReceiverOutputs = append(transaction.ReceiverOutputs, &Output{
+		Address: recipient,
+		Amount:  amount,
 	})
 
 	SignTransaction(transaction, senderWallet)

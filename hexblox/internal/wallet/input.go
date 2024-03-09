@@ -3,17 +3,17 @@ package wallet
 import "fmt"
 
 type Input struct {
-	address   string
-	timestamp int64
-	amount    float64
-	signature string
+	Address   string
+	Timestamp int64
+	Amount    float64
+	Signature string
 }
 
 func (input *Input) String() string {
 	return fmt.Sprint(
-		"            Address:   ", input.address, "\n",
-		"            Timestamp: ", input.timestamp, "\n",
-		"            Amount:    ", input.amount, "\n",
-		"            Signature: ", input.signature, "\n",
+		"      Address:   ", input.Address, "\n",
+		"      Timestamp: ", input.Timestamp, "\n",
+		"      Amount:    ", input.Amount, "\n",
+		"      Signature: ", input.Signature, "\n",
 	)
 }

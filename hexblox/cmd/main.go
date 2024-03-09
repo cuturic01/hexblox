@@ -1,25 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"hexblox/internal/wallet"
+	"flag"
+	"hexblox/internal/p2p"
 )
 
 func main() {
+	httpPort := flag.String("http", "", "HTTP server port")
+	hostPort := flag.String("host", "", "WebSocket server port")
+	flag.Parse()
 
-	wallet1 := wallet.NewWallet()
-	wallet2 := wallet.NewWallet()
+	p2p.Run(*httpPort, *hostPort)
 
-	transaction := wallet.NewTransaction(wallet1, wallet2.PublicKey, 60)
-	transaction.Update(wallet1, wallet2.PublicKey, 100)
-
-	fmt.Println(transaction)
-
-	//httpPort := flag.String("http", "", "HTTP server port")
-	//hostPort := flag.String("host", "", "WebSocket server port")
-	//flag.Parse()
-	//
-	//p2p.Run(*httpPort, *hostPort)
-	//
-	//select {}
+	select {}
 }

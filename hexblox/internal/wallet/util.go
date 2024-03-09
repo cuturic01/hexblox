@@ -54,5 +54,5 @@ func IndentString(input string, indent string) string {
 	for i, line := range lines {
 		lines[i] = indent + line
 	}
-	return strings.ReplaceAll(strings.Join(lines, "\n")+string(input[len(input)-1]), "\n\n", "\n")
+	return strings.ReplaceAll(strings.Join(lines, "\n")+string(input[len(input)-1]), "\n\n  ", "\n")
 }

@@ -38,3 +38,22 @@ func (wallet *Wallet) Sign(hash string) string {
 	}
 	return hex.EncodeToString(signature)
 }
+
+func (wallet *Wallet) CreateTransaction(recipient string, amount float64, pool *TransactionPool) *Transaction {
+	if amount > wallet.balance {
+		fmt.Printf("Amount %f exceedes balance", amount)
+		return nil
+	}
+
+	transaction := pool.ExistingTransaction(wallet.PublicKey)
+
+	if transaction != nil {
+		transaction.Update(wallet, recipient, amount)
+		fmt.Println("Transaction updated.")
+	} else {
+		transaction = NewTransaction(wallet, recipient, amount)
+		pool.AddTransaction(transaction)
+	}
+
+	return transaction
+}

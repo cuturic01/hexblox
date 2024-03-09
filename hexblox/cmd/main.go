@@ -12,12 +12,12 @@ func main() {
 	wallet2 := wallet.NewWallet()
 
 	transaction := wallet.NewTransaction(wallet1, wallet2.PublicKey, 60)
-	transaction2 := wallet.NewTransaction(wallet2, wallet1.PublicKey, 60)
 	transactionPool.AddTransaction(transaction)
-	transactionPool.AddTransaction(transaction2)
 	fmt.Println("Before:", transactionPool)
-	transaction.Update(wallet1, wallet2.PublicKey, 100)
-	transactionPool.AddTransaction(transaction)
+
+	wallet1.CreateTransaction(wallet2.PublicKey, 60, transactionPool)
+	wallet2.CreateTransaction(wallet1.PublicKey, 100, transactionPool)
+
 	fmt.Println("After:", transactionPool)
 
 	//httpPort := flag.String("http", "", "HTTP server port")

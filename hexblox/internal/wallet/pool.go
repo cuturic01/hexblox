@@ -34,3 +34,13 @@ func (transactionPool *TransactionPool) String() string {
 		"-Transaction Pool \n",
 		"      Transactions:\n", IndentString(transactionsString, "            "))
 }
+
+func (transactionPool *TransactionPool) ExistingTransaction(address string) *Transaction {
+	for _, transaction := range transactionPool.Transactions {
+		if transaction.Input.Address == address {
+			return transaction
+		}
+	}
+
+	return nil
+}

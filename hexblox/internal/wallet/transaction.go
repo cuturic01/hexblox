@@ -63,7 +63,7 @@ func SignTransaction(transaction *Transaction, senderWallet *Wallet) {
 	}
 
 	transaction.Input = &Input{
-		address:   senderWallet.PublicKey,
+		Address:   senderWallet.PublicKey,
 		timestamp: time.Now().UnixMilli(),
 		amount:    senderWallet.balance,
 		signature: senderWallet.Sign(GenerateHash(outputsString)),

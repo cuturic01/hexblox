@@ -10,6 +10,9 @@ type Input struct {
 }
 
 func (input *Input) String() string {
+	if input == nil {
+		return "  "
+	}
 	return fmt.Sprint(
 		"      Address:   ", input.Address, "\n",
 		"      Timestamp: ", input.Timestamp, "\n",

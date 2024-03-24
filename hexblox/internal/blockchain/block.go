@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hexblox/internal/config"
+	"hexblox/internal/wallet"
 	"strings"
 	"time"
 )
@@ -15,7 +16,7 @@ type Block struct {
 	Hash       string
 	Nonce      int
 	Difficulty int
-	Data       []*string
+	Data       []*wallet.Transaction
 }
 
 func Genesis() *Block {
@@ -25,7 +26,7 @@ func Genesis() *Block {
 		Hash:       "f1r57-h45h",
 		Nonce:      0,
 		Difficulty: config.Difficulty,
-		Data:       []*string{},
+		Data:       []*wallet.Transaction{},
 	}
 }
 
@@ -41,7 +42,7 @@ func (block *Block) String() string {
 	)
 }
 
-func MineBlock(lastBlock *Block, data []*string) *Block {
+func MineBlock(lastBlock *Block, data []*wallet.Transaction) *Block {
 	fmt.Println("Mining block...")
 
 	var timestamp int64
@@ -54,7 +55,12 @@ func MineBlock(lastBlock *Block, data []*string) *Block {
 	for {
 		timestamp = time.Now().UnixMilli()
 		difficulty = adjustDifficulty(lastBlock, timestamp)
-		hash = GenerateHash(timestamp, lastHash, data, nonce, difficulty)
+
+		var dataString string
+		for _, transaction := range data {
+			dataString += transaction.String()
+		}
+		hash = GenerateHash(timestamp, lastHash, dataString, nonce, difficulty)
 
 		if hash[:difficulty] == strings.Repeat("0", difficulty) {
 			endTime := time.Now()
@@ -74,21 +80,19 @@ func MineBlock(lastBlock *Block, data []*string) *Block {
 	}
 }
 
-func GenerateHash(timestamp int64, lastHash string, data []*string, nonce int, difficulty int) string {
-	var stringData string
-
-	for _, strPtr := range data {
-		stringData += *strPtr
-	}
-
-	s := fmt.Sprint(timestamp, lastHash, stringData, nonce, difficulty)
+func GenerateHash(timestamp int64, lastHash string, data string, nonce int, difficulty int) string {
+	s := fmt.Sprint(timestamp, lastHash, data, nonce, difficulty)
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func HashBlock(block *Block) string {
-	return GenerateHash(block.Timestamp, block.LastHash, block.Data, block.Nonce, block.Difficulty)
+	var dataString string
+	for _, transaction := range block.Data {
+		dataString += transaction.String()
+	}
+	return GenerateHash(block.Timestamp, block.LastHash, dataString, block.Nonce, block.Difficulty)
 }
 
 func adjustDifficulty(lastBlock *Block, currentTimestamp int64) int {

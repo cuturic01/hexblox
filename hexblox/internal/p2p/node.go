@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// Node TODO: refactor the struct so it fits single responsibility principle
 type Node struct {
 	Blockchain      *blockchain.Blockchain
 	Wallet          *wallet.Wallet
@@ -98,6 +99,7 @@ func (node *Node) initSub() {
 func (node *Node) joinRooms() {
 	node.joinRoom("hexblox")
 	node.joinRoom("hexblox-transaction-pool")
+	node.joinRoom("hexblox-transaction-pool-clear")
 }
 
 func (node *Node) joinRoom(room string) {
@@ -136,6 +138,8 @@ func (node *Node) subscribe(topic string) {
 			node.syncChain(msg)
 		case "hexblox-transaction-pool":
 			node.syncTransactionPool(msg)
+		case "hexblox-transaction-pool-clear":
+			node.TransactionPool.Clear()
 		}
 	}
 }
@@ -149,7 +153,7 @@ func (node *Node) setupDiscovery() error {
 func (node *Node) sendMessage(topic string, message string) error {
 	err := node.topics[topic].Publish(node.ctx, []byte(message))
 	if err != nil {
-		fmt.Println("Failed to sent message:", err)
+		fmt.Println("Failed to send message:", err)
 		return err
 	}
 	fmt.Println("Message sent to topic:", topic)
@@ -197,6 +201,26 @@ func (node *Node) syncTransactionPool(message *pubsub.Message) {
 		return
 	}
 
-	node.TransactionPool.Transactions = append(node.TransactionPool.Transactions, newTransaction)
+	node.TransactionPool.AddTransaction(newTransaction)
 	fmt.Println("Transaction pool successfully updated.")
+}
+
+func (node *Node) Mine() {
+	transactions := node.TransactionPool.ValidTransactions()
+	if len(transactions) == 0 {
+		fmt.Println("No valid transactions!")
+		return
+	}
+	transactions = append(transactions, wallet.RewardTransaction(node.Wallet))
+
+	block := node.Blockchain.AddBlock(transactions)
+	fmt.Println("Transaction mined!")
+	fmt.Println(block)
+
+	node.PropagateChain()
+	node.TransactionPool.Clear()
+	err := node.sendMessage("hexblox-transaction-pool-clear", "")
+	if err != nil {
+		panic(err)
+	}
 }

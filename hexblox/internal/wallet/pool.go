@@ -21,6 +21,7 @@ func (transactionPool *TransactionPool) AddTransaction(newTransaction *Transacti
 			return
 		}
 	}
+	// fmt.Println(newTransaction)
 	transactionPool.Transactions = append(transactionPool.Transactions, newTransaction)
 }
 
@@ -43,4 +44,33 @@ func (transactionPool *TransactionPool) ExistingTransaction(address string) *Tra
 	}
 
 	return nil
+}
+
+func (transactionPool *TransactionPool) ValidTransactions() []*Transaction {
+	validTransactions := make([]*Transaction, 0)
+	for _, transaction := range transactionPool.Transactions {
+		var totalAmount float64
+		for _, output := range transaction.Outputs {
+			totalAmount += output.Amount
+		}
+		if transaction.Input.Amount != totalAmount {
+			fmt.Println("Input and output amounts don't match.")
+			continue
+		}
+
+		if !Valid(transaction) {
+			fmt.Println("Invalid transaction signature.")
+			continue
+		}
+
+		validTransactions = append(validTransactions, transaction)
+
+	}
+	return validTransactions
+}
+
+func (transactionPool *TransactionPool) Clear() {
+	transactionPool.Transactions = make([]*Transaction, 0)
+	fmt.Println("Transaction pool cleared:")
+	fmt.Println(transactionPool.Transactions)
 }

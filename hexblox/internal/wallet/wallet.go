@@ -32,7 +32,11 @@ func (wallet *Wallet) String() string {
 }
 
 func (wallet *Wallet) Sign(hash string) string {
-	signature, err := wallet.keyPair.Sign(rand.Reader, []byte(hash), nil)
+	hashBytes, err := hex.DecodeString(hash)
+	if err != nil {
+		panic(err)
+	}
+	signature, err := wallet.keyPair.Sign(rand.Reader, hashBytes, nil)
 	if err != nil {
 		panic(err)
 	}

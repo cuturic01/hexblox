@@ -9,13 +9,16 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"hexblox/internal/blockchain"
+	"hexblox/internal/domain"
 	"net/http"
 	"time"
 )
 
+// Node TODO: refactor the struct so it fits single responsibility principle
 type Node struct {
-	Blockchain *blockchain.Blockchain
+	Blockchain      *domain.Blockchain
+	Wallet          *domain.Wallet
+	TransactionPool *domain.TransactionPool
 
 	HttpServer *gin.Engine
 
@@ -30,10 +33,12 @@ type Node struct {
 
 func Run(httpPort string, hostPort string) *Node {
 	node := &Node{
-		Blockchain:    blockchain.NewBlockchain(),
-		ctx:           context.Background(),
-		topics:        make(map[string]*pubsub.Topic),
-		subscriptions: make(map[string]*pubsub.Subscription),
+		Blockchain:      domain.NewBlockchain(),
+		Wallet:          domain.NewWallet(),
+		TransactionPool: domain.NewTransactionPool(),
+		ctx:             context.Background(),
+		topics:          make(map[string]*pubsub.Topic),
+		subscriptions:   make(map[string]*pubsub.Subscription),
 	}
 	node.initHost(hostPort)
 	node.initSub()
@@ -47,6 +52,7 @@ func (node *Node) initHttpServer(httpPort string) {
 	httpServer := gin.Default()
 	node.HttpServer = httpServer
 	SetBlockchainRoutes(node)
+	SetTransactionRoutes(node)
 	httpServer.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello from HTTP server")
 	})
@@ -86,8 +92,17 @@ func (node *Node) initSub() {
 	// TODO: see if there is a way to implicitly wait for completion of setupDiscovery
 	time.Sleep(5 * time.Second)
 
-	room := "hexblox"
-	topic, err := gossipPubSub.Join(room)
+	node.joinRooms()
+}
+
+func (node *Node) joinRooms() {
+	node.joinRoom("hexblox")
+	node.joinRoom("hexblox-transaction-pool")
+	node.joinRoom("hexblox-transaction-pool-clear")
+}
+
+func (node *Node) joinRoom(room string) {
+	topic, err := node.gossipPubSub.Join(room)
 	if err != nil {
 		panic(err)
 	}
@@ -120,6 +135,10 @@ func (node *Node) subscribe(topic string) {
 		switch topic {
 		case "hexblox":
 			node.syncChain(msg)
+		case "hexblox-transaction-pool":
+			node.syncTransactionPool(msg)
+		case "hexblox-transaction-pool-clear":
+			node.TransactionPool.Clear()
 		}
 	}
 }
@@ -133,7 +152,7 @@ func (node *Node) setupDiscovery() error {
 func (node *Node) sendMessage(topic string, message string) error {
 	err := node.topics[topic].Publish(node.ctx, []byte(message))
 	if err != nil {
-		fmt.Println("Failed to sent message:", err)
+		fmt.Println("Failed to send message:", err)
 		return err
 	}
 	fmt.Println("Message sent to topic:", topic)
@@ -154,11 +173,53 @@ func (node *Node) PropagateChain() {
 
 func (node *Node) syncChain(message *pubsub.Message) {
 	messageData := string(message.Data)
-	var newChain []*blockchain.Block
+	var newChain []*domain.Block
 
 	if err := json.Unmarshal([]byte(messageData), &newChain); err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 	node.Blockchain.ReplaceChain(newChain)
+}
+
+func (node *Node) PropagateTransaction(transaction *domain.Transaction) {
+	jsonTransaction, err := json.Marshal(transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = node.sendMessage("hexblox-transaction-pool", string(jsonTransaction))
+}
+
+func (node *Node) syncTransactionPool(message *pubsub.Message) {
+	messageData := string(message.Data)
+	var newTransaction *domain.Transaction
+
+	if err := json.Unmarshal([]byte(messageData), &newTransaction); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	node.TransactionPool.AddTransaction(newTransaction)
+	fmt.Println("Transaction pool successfully updated.")
+}
+
+func (node *Node) Mine() {
+	transactions := node.TransactionPool.ValidTransactions()
+	if len(transactions) == 0 {
+		fmt.Println("No valid transactions!")
+		return
+	}
+	transactions = append(transactions, domain.RewardTransaction(node.Wallet))
+
+	block := node.Blockchain.AddBlock(transactions)
+	fmt.Println("Transaction mined!")
+	fmt.Println(block)
+
+	node.PropagateChain()
+	node.TransactionPool.Clear()
+	err := node.sendMessage("hexblox-transaction-pool-clear", "")
+	if err != nil {
+		panic(err)
+	}
 }

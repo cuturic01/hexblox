@@ -9,16 +9,16 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"hexblox/internal/blockchain"
-	"hexblox/internal/wallet"
+	"hexblox/internal/domain"
 	"net/http"
 	"time"
 )
 
+// Node TODO: refactor the struct so it fits single responsibility principle
 type Node struct {
-	Blockchain      *blockchain.Blockchain
-	Wallet          *wallet.Wallet
-	TransactionPool *wallet.TransactionPool
+	Blockchain      *domain.Blockchain
+	Wallet          *domain.Wallet
+	TransactionPool *domain.TransactionPool
 
 	HttpServer *gin.Engine
 
@@ -33,9 +33,9 @@ type Node struct {
 
 func Run(httpPort string, hostPort string) *Node {
 	node := &Node{
-		Blockchain:      blockchain.NewBlockchain(),
-		Wallet:          wallet.NewWallet(),
-		TransactionPool: wallet.NewTransactionPool(),
+		Blockchain:      domain.NewBlockchain(),
+		Wallet:          domain.NewWallet(),
+		TransactionPool: domain.NewTransactionPool(),
 		ctx:             context.Background(),
 		topics:          make(map[string]*pubsub.Topic),
 		subscriptions:   make(map[string]*pubsub.Subscription),
@@ -98,6 +98,7 @@ func (node *Node) initSub() {
 func (node *Node) joinRooms() {
 	node.joinRoom("hexblox")
 	node.joinRoom("hexblox-transaction-pool")
+	node.joinRoom("hexblox-transaction-pool-clear")
 }
 
 func (node *Node) joinRoom(room string) {
@@ -136,6 +137,8 @@ func (node *Node) subscribe(topic string) {
 			node.syncChain(msg)
 		case "hexblox-transaction-pool":
 			node.syncTransactionPool(msg)
+		case "hexblox-transaction-pool-clear":
+			node.TransactionPool.Clear()
 		}
 	}
 }
@@ -149,7 +152,7 @@ func (node *Node) setupDiscovery() error {
 func (node *Node) sendMessage(topic string, message string) error {
 	err := node.topics[topic].Publish(node.ctx, []byte(message))
 	if err != nil {
-		fmt.Println("Failed to sent message:", err)
+		fmt.Println("Failed to send message:", err)
 		return err
 	}
 	fmt.Println("Message sent to topic:", topic)
@@ -170,7 +173,7 @@ func (node *Node) PropagateChain() {
 
 func (node *Node) syncChain(message *pubsub.Message) {
 	messageData := string(message.Data)
-	var newChain []*blockchain.Block
+	var newChain []*domain.Block
 
 	if err := json.Unmarshal([]byte(messageData), &newChain); err != nil {
 		fmt.Println("Error:", err)
@@ -179,7 +182,7 @@ func (node *Node) syncChain(message *pubsub.Message) {
 	node.Blockchain.ReplaceChain(newChain)
 }
 
-func (node *Node) PropagateTransaction(transaction *wallet.Transaction) {
+func (node *Node) PropagateTransaction(transaction *domain.Transaction) {
 	jsonTransaction, err := json.Marshal(transaction)
 	if err != nil {
 		panic(err)
@@ -190,13 +193,33 @@ func (node *Node) PropagateTransaction(transaction *wallet.Transaction) {
 
 func (node *Node) syncTransactionPool(message *pubsub.Message) {
 	messageData := string(message.Data)
-	var newTransaction *wallet.Transaction
+	var newTransaction *domain.Transaction
 
 	if err := json.Unmarshal([]byte(messageData), &newTransaction); err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	node.TransactionPool.Transactions = append(node.TransactionPool.Transactions, newTransaction)
+	node.TransactionPool.AddTransaction(newTransaction)
 	fmt.Println("Transaction pool successfully updated.")
+}
+
+func (node *Node) Mine() {
+	transactions := node.TransactionPool.ValidTransactions()
+	if len(transactions) == 0 {
+		fmt.Println("No valid transactions!")
+		return
+	}
+	transactions = append(transactions, domain.RewardTransaction(node.Wallet))
+
+	block := node.Blockchain.AddBlock(transactions)
+	fmt.Println("Transaction mined!")
+	fmt.Println(block)
+
+	node.PropagateChain()
+	node.TransactionPool.Clear()
+	err := node.sendMessage("hexblox-transaction-pool-clear", "")
+	if err != nil {
+		panic(err)
+	}
 }

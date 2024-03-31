@@ -1,4 +1,4 @@
-package wallet
+package util
 
 import (
 	"crypto/ecdsa"
@@ -36,7 +36,7 @@ func DecodeKey(hexEncoded string) (*ecdsa.PublicKey, error) {
 		return nil, err
 	}
 
-	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), uncompressedBytes)
+	x, y := elliptic.UnmarshalCompressed(config.Curve, uncompressedBytes)
 	if x == nil || y == nil {
 		return nil, fmt.Errorf("invalid uncompressed public key")
 	}
@@ -47,6 +47,25 @@ func DecodeKey(hexEncoded string) (*ecdsa.PublicKey, error) {
 		Y:     y,
 	}
 	return publicKey, nil
+}
+
+func VerifySignature(publicKeyHex string, signature string, hash string) bool {
+	publicKey, err := DecodeKey(publicKeyHex)
+	if err != nil {
+		panic(err)
+	}
+
+	hashBytes, err := hex.DecodeString(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		panic(err)
+	}
+
+	return ecdsa.VerifyASN1(publicKey, hashBytes, signatureBytes)
 }
 
 func IndentString(input string, indent string) string {

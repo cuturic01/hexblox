@@ -67,11 +67,10 @@ func (transaction *Transaction) String() string {
 	)
 }
 
-// Update TODO: fix output amount calculation
 func (transaction *Transaction) Update(senderWallet *Wallet, recipient string, amount float64) {
 	var senderOutput *Output
 	for _, output := range transaction.Outputs {
-		if output.Address == recipient {
+		if output.Address == senderWallet.PublicKey {
 			senderOutput = output
 		}
 	}

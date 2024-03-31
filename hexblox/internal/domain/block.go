@@ -1,11 +1,10 @@
-package blockchain
+package domain
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"hexblox/internal/config"
-	"hexblox/internal/wallet"
 	"strings"
 	"time"
 )
@@ -16,7 +15,7 @@ type Block struct {
 	Hash       string
 	Nonce      int
 	Difficulty int
-	Data       []*wallet.Transaction
+	Data       []*Transaction
 }
 
 func Genesis() *Block {
@@ -26,7 +25,7 @@ func Genesis() *Block {
 		Hash:       "f1r57-h45h",
 		Nonce:      0,
 		Difficulty: config.Difficulty,
-		Data:       []*wallet.Transaction{},
+		Data:       []*Transaction{},
 	}
 }
 
@@ -42,7 +41,7 @@ func (block *Block) String() string {
 	)
 }
 
-func MineBlock(lastBlock *Block, data []*wallet.Transaction) *Block {
+func MineBlock(lastBlock *Block, data []*Transaction) *Block {
 	fmt.Println("Mining block...")
 
 	var timestamp int64

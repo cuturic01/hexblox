@@ -3,7 +3,7 @@ package p2p
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"hexblox/internal/wallet"
+	"hexblox/internal/domain"
 	"net/http"
 )
 
@@ -16,7 +16,7 @@ func SetBlockchainRoutes(node *Node) {
 
 		blockchainGroup.POST("/mine", func(context *gin.Context) {
 			var requestData struct {
-				Data []*wallet.Transaction `json:"data"`
+				Data []*domain.Transaction `json:"data"`
 			}
 
 			if err := context.BindJSON(&requestData); err != nil {
@@ -53,7 +53,12 @@ func SetTransactionRoutes(node *Node) {
 				fmt.Println(err.Error())
 				return
 			}
-			transaction := node.Wallet.CreateTransaction(requestData.Recipient, requestData.Amount, node.TransactionPool)
+			transaction := node.Wallet.CreateTransaction(
+				requestData.Recipient,
+				requestData.Amount,
+				node.TransactionPool,
+				node.Blockchain,
+			)
 			node.PropagateTransaction(transaction)
 		})
 

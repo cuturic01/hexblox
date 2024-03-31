@@ -1,9 +1,10 @@
-package wallet
+package domain
 
 import (
 	"fmt"
 	"github.com/google/uuid"
 	"hexblox/internal/config"
+	"hexblox/internal/util"
 	"time"
 )
 
@@ -39,15 +40,21 @@ func NewTransaction(senderWallet *Wallet, recipient string, amount float64) *Tra
 }
 
 func RewardTransaction(minerWallet *Wallet) *Transaction {
+	input := &Input{
+		Address:   "hexblox",
+		Timestamp: time.Now().UnixMilli(),
+		Amount:    100000,
+		Signature: "reward-transaction",
+	}
 	output := &Output{
 		Address: minerWallet.PublicKey,
 		Amount:  config.MiningReword,
 	}
 	transaction := &Transaction{
 		Id:      uuid.NewString(),
+		Input:   input,
 		Outputs: []*Output{output},
 	}
-	fmt.Println(transaction)
 	return transaction
 }
 
@@ -62,8 +69,8 @@ func (transaction *Transaction) String() string {
 	return fmt.Sprint(
 		"-Transaction \n",
 		"      Id:   ", transaction.Id, "\n",
-		"      Input:\n", IndentString(transaction.Input.String(), "      "),
-		"      Outputs:\n", IndentString(outputsString, "      "),
+		"      Input:\n", util.IndentString(transaction.Input.String(), "      "),
+		"      Outputs:\n", util.IndentString(outputsString, "      "),
 	)
 }
 
@@ -96,7 +103,7 @@ func SignTransaction(transaction *Transaction, senderWallet *Wallet) {
 		Address:   senderWallet.PublicKey,
 		Timestamp: time.Now().UnixMilli(),
 		Amount:    senderWallet.balance,
-		Signature: senderWallet.Sign(GenerateHash(outputsString)),
+		Signature: senderWallet.Sign(util.GenerateHash(outputsString)),
 	}
 }
 
@@ -105,5 +112,5 @@ func Valid(transaction *Transaction) bool {
 	for _, output := range transaction.Outputs {
 		outputsString = fmt.Sprint(outputsString, output.String())
 	}
-	return VerifySignature(transaction.Input.Address, transaction.Input.Signature, GenerateHash(outputsString))
+	return util.VerifySignature(transaction.Input.Address, transaction.Input.Signature, util.GenerateHash(outputsString))
 }

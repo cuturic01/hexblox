@@ -1,7 +1,8 @@
-package wallet
+package domain
 
 import (
 	"fmt"
+	"hexblox/internal/util"
 )
 
 type TransactionPool struct {
@@ -33,7 +34,7 @@ func (transactionPool *TransactionPool) String() string {
 	}
 	return fmt.Sprint(
 		"-Transaction Pool \n",
-		"      Transactions:\n", IndentString(transactionsString, "            "))
+		"      Transactions:\n", util.IndentString(transactionsString, "            "))
 }
 
 func (transactionPool *TransactionPool) ExistingTransaction(address string) *Transaction {
@@ -71,6 +72,5 @@ func (transactionPool *TransactionPool) ValidTransactions() []*Transaction {
 
 func (transactionPool *TransactionPool) Clear() {
 	transactionPool.Transactions = make([]*Transaction, 0)
-	fmt.Println("Transaction pool cleared:")
-	fmt.Println(transactionPool.Transactions)
+	fmt.Println("Transaction pool cleared.")
 }

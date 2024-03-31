@@ -9,17 +9,16 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
-	"hexblox/internal/blockchain"
-	"hexblox/internal/wallet"
+	"hexblox/internal/domain"
 	"net/http"
 	"time"
 )
 
 // Node TODO: refactor the struct so it fits single responsibility principle
 type Node struct {
-	Blockchain      *blockchain.Blockchain
-	Wallet          *wallet.Wallet
-	TransactionPool *wallet.TransactionPool
+	Blockchain      *domain.Blockchain
+	Wallet          *domain.Wallet
+	TransactionPool *domain.TransactionPool
 
 	HttpServer *gin.Engine
 
@@ -34,9 +33,9 @@ type Node struct {
 
 func Run(httpPort string, hostPort string) *Node {
 	node := &Node{
-		Blockchain:      blockchain.NewBlockchain(),
-		Wallet:          wallet.NewWallet(),
-		TransactionPool: wallet.NewTransactionPool(),
+		Blockchain:      domain.NewBlockchain(),
+		Wallet:          domain.NewWallet(),
+		TransactionPool: domain.NewTransactionPool(),
 		ctx:             context.Background(),
 		topics:          make(map[string]*pubsub.Topic),
 		subscriptions:   make(map[string]*pubsub.Subscription),
@@ -174,7 +173,7 @@ func (node *Node) PropagateChain() {
 
 func (node *Node) syncChain(message *pubsub.Message) {
 	messageData := string(message.Data)
-	var newChain []*blockchain.Block
+	var newChain []*domain.Block
 
 	if err := json.Unmarshal([]byte(messageData), &newChain); err != nil {
 		fmt.Println("Error:", err)
@@ -183,7 +182,7 @@ func (node *Node) syncChain(message *pubsub.Message) {
 	node.Blockchain.ReplaceChain(newChain)
 }
 
-func (node *Node) PropagateTransaction(transaction *wallet.Transaction) {
+func (node *Node) PropagateTransaction(transaction *domain.Transaction) {
 	jsonTransaction, err := json.Marshal(transaction)
 	if err != nil {
 		panic(err)
@@ -194,7 +193,7 @@ func (node *Node) PropagateTransaction(transaction *wallet.Transaction) {
 
 func (node *Node) syncTransactionPool(message *pubsub.Message) {
 	messageData := string(message.Data)
-	var newTransaction *wallet.Transaction
+	var newTransaction *domain.Transaction
 
 	if err := json.Unmarshal([]byte(messageData), &newTransaction); err != nil {
 		fmt.Println("Error:", err)
@@ -211,7 +210,7 @@ func (node *Node) Mine() {
 		fmt.Println("No valid transactions!")
 		return
 	}
-	transactions = append(transactions, wallet.RewardTransaction(node.Wallet))
+	transactions = append(transactions, domain.RewardTransaction(node.Wallet))
 
 	block := node.Blockchain.AddBlock(transactions)
 	fmt.Println("Transaction mined!")

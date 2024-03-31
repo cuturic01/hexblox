@@ -1,8 +1,7 @@
-package blockchain
+package domain
 
 import (
 	"fmt"
-	"hexblox/internal/wallet"
 )
 
 type Blockchain struct {
@@ -19,7 +18,7 @@ func (blockchain *Blockchain) Chain() []*Block {
 	return blockchain.chain
 }
 
-func (blockchain *Blockchain) AddBlock(data []*wallet.Transaction) *Block {
+func (blockchain *Blockchain) AddBlock(data []*Transaction) *Block {
 	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data)
 	blockchain.chain = append(blockchain.chain, block)
 	return block

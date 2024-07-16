@@ -44,7 +44,6 @@ func (wallet *Wallet) Sign(hash string) string {
 	return hex.EncodeToString(signature)
 }
 
-// CreateTransaction TODO: check when the balance recalculation is supposed to occur
 func (wallet *Wallet) CreateTransaction(
 	recipient string,
 	amount float64,

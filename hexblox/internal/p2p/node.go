@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-// Node TODO: refactor the struct so it fits single responsibility principle
 type Node struct {
 	Blockchain      *domain.Blockchain
 	Wallet          *domain.Wallet
@@ -73,6 +72,7 @@ func (node *Node) initHost(hostPort string) {
 		panic(err)
 	}
 	fmt.Printf("Host %s initialized on port: %s\n", nodeHost.ID(), hostPort)
+	fmt.Printf("Listening on %s\n", nodeHost.Addrs())
 
 	node.host = nodeHost
 	node.notifee = &Notifee{h: nodeHost}
@@ -89,7 +89,6 @@ func (node *Node) initSub() {
 		panic(err)
 	}
 
-	// TODO: see if there is a way to implicitly wait for completion of setupDiscovery
 	time.Sleep(5 * time.Second)
 
 	node.joinRooms()
